@@ -1,5 +1,3 @@
-cd("dump_files")
-
 using Plots
 using LinearAlgebra
 using FFTW
@@ -22,7 +20,6 @@ num_lines::Int32 = countlines(dumpfilepath)
 natoms = CSV.File(dumpfilepath, skipto=4, limit=1, header=false).Column1[1]
 nhydrogens::Int32 = 2 * natoms / 3
 
-
 nblocks = 1
 
 # How many configurations are in dump (how many time steps)
@@ -35,8 +32,8 @@ t = collect(Float32, 0:totalsteps-1) .* (CSV.File(dumpfilepath, skipto=(11 + nat
 
 
 function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<:AbstractVector{<:Real}}, combinations)
-    counter::Int32 = 1
-    if combinations == "all"
+counter::Int32 = 1
+if combinations == "all"
         for k in axes(positions, 1)
             for j in axes(positions, 1)
                 j > k || continue
@@ -247,32 +244,6 @@ function calculateF(contributions)
     # Exit the function
 end
 
-F = calculateF("intra")
-
-tp = 500 # Number of points in the t dimension
-
-ensemble_τt = ones(size(F, 2) - tp, tp) # Initialise array
-ensemble_ijt = ones(size(F, 1), tp)
-
-for i in axes(F, 1) # For every pair of hydrogens
-
-    for τ in 1:(size(F, 2)-tp) # For every starting time τ
-        ensemble_τt[τ, :] = F[i, τ] .* F[i, τ:(τ+tp-1)] # calculate correlations and put them in a matrix
-    end
-
-    ensemble_ijt[i, :] = sum(ensemble_τt, dims=1) ./ size(ensemble_τt, 1) # average the τ dimension of that matrix
-
-end
-
-G = 3 / 16 * (μ₀ / 4π)^2 * ħ^2 * γ^4 * vec(sum(ensemble_ijt, dims=1) ./ size(ensemble_ijt, 1)) 
-
-J = 2 * abs.(fft(G))
-
-τᵣₜ = J[1] / (2 * G[1])
-
-plot(t[1:length(G)] ./ τᵣₜ , G ./ G[1])
-
-
 
 function calc_msd(steps)
 
@@ -398,17 +369,18 @@ T2 = 1 / ((9 / 24) * (μ₀ / 4π)^2 * γ^4 * ħ^2 * (J[1][ω₀index] + 10J[2][
 display("T1 = $T1 s")
 display("T2 = $T2 s")
 
-
-for i in 1:10
-    for j in 1:10
-        (isodd(i) && j > (i + 1)) || (iseven(i) && j > i) || continue
-        display("$i with $j")
-    end
-end
-
-for i in 1:2:10
-    display("$i with $(i+1)")
-end
+## Method for selecting inta or inter hydrogens exclusively
+## Just a demonstration, not actual part of the code
+#for i in 1:10
+#     for j in 1:10
+#        (isodd(i) && j > (i + 1)) || (iseven(i) && j > i) || continue
+#        display("$i with $j")
+#     end
+#end
+#
+#for i in 1:2:10
+#    display("$i with $(i+1)")
+#end
 
 # Replicating mathematica Carles method
 
@@ -442,4 +414,37 @@ Jₜ = 2 * real.(fft(Gₜ))
 
 
 T = 1 / (10 / 3 * Δω²ₜ * τₜ + 10 / 3 * Δω²ᵣ * τᵣ)
+
+# Ensemble averaging over time
+
+F = calculateF("intra")
+
+tp = 500 # Number of points in the t dimension
+
+ensemble_τt = ones(size(F, 2) - tp, tp) # Initialise array
+ensemble_ijt = ones(size(F, 1), tp)
+
+for i in axes(F, 1) # For every pair of hydrogens
+
+    for τ in 1:(size(F, 2)-tp) # For every starting time τ
+        ensemble_τt[τ, :] = F[i, τ] .* F[i, τ:(τ+tp-1)] # calculate correlations and put them in a matrix
+    end
+
+    ensemble_ijt[i, :] = sum(ensemble_τt, dims=1) ./ size(ensemble_τt, 1) # average the τ dimension of that matrix
+
+end
+
+G = 3 / 16 * (μ₀ / 4π)^2 * ħ^2 * γ^4 * vec(sum(ensemble_ijt, dims=1) ./ size(ensemble_ijt, 1)) 
+
+J = 2 * abs.(fft(G))
+
+τᵣₜ = J[1] / (2 * G[1])
+
+plot(t[1:length(G)] ./ τᵣₜ , G ./ G[1])
+
+
+
+
+
+
 
