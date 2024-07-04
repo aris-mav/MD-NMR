@@ -10,7 +10,7 @@ const γ = 267.52218744e6; # (rad s^-1 T^-1)
 const ħ = 1.054571817e-34;  # (J s)
 const μ₀ = 1.25663706212e-6; #N A^-2
 
-dumpfilepath::String = "dump.lammpstrj"
+dumpfilepath = "dump.lammpstrj"
 timestep = 1 #femptosec
 
 # Count lines in dump
@@ -338,18 +338,23 @@ function plotG(Gmean)
     display(a)
 end
 
-D = calc_msd(900)
+
+
+## Actual calculations using functions defined above
+#
+
+#D = calc_msd(900)
 
 # Fmatrix = calc_F(100)
 # G = calc_G(Fmatrix)
 
-G = mainloop(900, 3, "inter")
+#G = mainloop(900, 3, "inter")
 
 # Block averaging
 Gmean = Base.stack(vec(mean(reshape(G, size(G)[1] ÷ nblocks, nblocks), dims=2)))
 # Gmean = Base.stack(vec(mean(reshape(G, size(G)[1]), dims=2)))
 
-# Add prefactors
+# Add prefactors (tests to match paper values)
 # Gmean = Gmean * 0.0265 ./ Gmean[1, 1]
 # Gmean = (13/6)*(μ₀/4pi)^2 .*Gmean
 
@@ -382,23 +387,24 @@ display("T2 = $T2 s")
 #    display("$i with $(i+1)")
 #end
 
-# Replicating mathematica Carles method
 
-G = mainloop(900, 3, "inter")
-Gmean_inter = Base.stack(vec(mean(reshape(G, size(G)[1] ÷ nblocks, nblocks), dims=2)))
-Jinter = [2 .* real.(fft(Gmean_inter[i, :])) for i in 1:3];
-plotG(Gmean_inter)
+## Replicating mathematica Carles method
 
-G = mainloop(900, 3, "intra")
-Gmean_intra = Base.stack(vec(mean(reshape(G, size(G)[1] ÷ nblocks, nblocks), dims=2)))
-Jintra = [2 .* real.(fft(Gmean_intra[i, :])) for i in 1:3];
-plotG(Gmean_intra)
+#G = mainloop(900, 3, "inter")
+#Gmean_inter = Base.stack(vec(mean(reshape(G, size(G)[1] ÷ nblocks, nblocks), dims=2)))
+#Jinter = [2 .* real.(fft(Gmean_inter[i, :])) for i in 1:3];
+#plotG(Gmean_inter)
+#
+#G = mainloop(900, 3, "intra")
+#Gmean_intra = Base.stack(vec(mean(reshape(G, size(G)[1] ÷ nblocks, nblocks), dims=2)))
+#Jintra = [2 .* real.(fft(Gmean_intra[i, :])) for i in 1:3];
+#plotG(Gmean_intra)
+#
+#T₁ = 1 / ((9 / 8 * (μ₀ / 4π)^2 * γ^4 * ħ^2 * 2 * (5.08 * (Jinter[2][1] + Jinter[3][1]) + Jintra[2][1] + Jintra[3][1])) * 10^(60))
+#T₂ = 1 / ((3 / 4 * (μ₀ / 4π)^2 * γ^4 * ħ^2 * 2 * (5.08 * (3 / 8 * Jinter[1][1] + 15 / 4 * Jinter[2][1] + 3 / 8 * Jinter[3][1])) + 3 / 8 * Jintra[1][1] + 15 / 4 * Jintra[2][1] + 3 / 8 * Jintra[3][1]) * 10^(60 - 15))
 
-T₁ = 1 / ((9 / 8 * (μ₀ / 4π)^2 * γ^4 * ħ^2 * 2 * (5.08 * (Jinter[2][1] + Jinter[3][1]) + Jintra[2][1] + Jintra[3][1])) * 10^(60))
-T₂ = 1 / ((3 / 4 * (μ₀ / 4π)^2 * γ^4 * ħ^2 * 2 * (5.08 * (3 / 8 * Jinter[1][1] + 15 / 4 * Jinter[2][1] + 3 / 8 * Jinter[3][1])) + 3 / 8 * Jintra[1][1] + 15 / 4 * Jintra[2][1] + 3 / 8 * Jintra[3][1]) * 10^(60 - 15))
 
-
-# Chapman paper method
+## Chapman paper method
 
 G = mainloop(900, 3, "intra")
 Gᵣ = 3 / 16 * (μ₀ / 4π)^2 * γ^4 * ħ^2 * real.(Base.stack(vec(mean(reshape(G, size(G)[1] ÷ nblocks, nblocks), dims=2)))[1, :])
@@ -415,36 +421,30 @@ Jₜ = 2 * real.(fft(Gₜ))
 
 T = 1 / (10 / 3 * Δω²ₜ * τₜ + 10 / 3 * Δω²ᵣ * τᵣ)
 
-# Ensemble averaging over time
+## Ensemble averaging over time
 
-F = calculateF("intra")
-
-tp = 500 # Number of points in the t dimension
-
-ensemble_τt = ones(size(F, 2) - tp, tp) # Initialise array
-ensemble_ijt = ones(size(F, 1), tp)
-
-for i in axes(F, 1) # For every pair of hydrogens
-
-    for τ in 1:(size(F, 2)-tp) # For every starting time τ
-        ensemble_τt[τ, :] = F[i, τ] .* F[i, τ:(τ+tp-1)] # calculate correlations and put them in a matrix
-    end
-
-    ensemble_ijt[i, :] = sum(ensemble_τt, dims=1) ./ size(ensemble_τt, 1) # average the τ dimension of that matrix
-
-end
-
-G = 3 / 16 * (μ₀ / 4π)^2 * ħ^2 * γ^4 * vec(sum(ensemble_ijt, dims=1) ./ size(ensemble_ijt, 1)) 
-
-J = 2 * abs.(fft(G))
-
-τᵣₜ = J[1] / (2 * G[1])
-
-plot(t[1:length(G)] ./ τᵣₜ , G ./ G[1])
-
-
-
-
-
-
-
+#F = calculateF("intra")
+#
+#tp = 500 # Number of points in the t dimension
+#
+#ensemble_τt = ones(size(F, 2) - tp, tp) # Initialise array
+#ensemble_ijt = ones(size(F, 1), tp)
+#
+#for i in axes(F, 1) # For every pair of hydrogens
+#
+#    for τ in 1:(size(F, 2)-tp) # For every starting time τ
+#        ensemble_τt[τ, :] = F[i, τ] .* F[i, τ:(τ+tp-1)] # calculate correlations and put them in a matrix
+#    end
+#
+#    ensemble_ijt[i, :] = sum(ensemble_τt, dims=1) ./ size(ensemble_τt, 1) # average the τ dimension of that matrix
+#
+#end
+#
+#G = 3 / 16 * (μ₀ / 4π)^2 * ħ^2 * γ^4 * vec(sum(ensemble_ijt, dims=1) ./ size(ensemble_ijt, 1)) 
+#
+#J = 2 * abs.(fft(G))
+#
+#τᵣₜ = J[1] / (2 * G[1])
+#
+#plot(t[1:length(G)] ./ τᵣₜ , G ./ G[1])
+#
