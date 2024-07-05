@@ -11,13 +11,13 @@ const ħ = 1.054571817e-34;  # (J s)
 const μ₀ = 1.25663706212e-6; #N A^-2
 
 # Define the dump file before running script
-if !@isdefined(dumpfilepath)
+# if !@isdefined(dumpfilepath)
 
-    display("Please provide a dump file path below:")
-    global dumpfilepath = readline()
-end
+#     display("Please provide a dump file path below:")
+#     global dumpfilepath = readline()
+# end
 
-#dumpfilepath = "dump.lammpstrj"
+dumpfilepath = "/lustre03/other/9847zg/dump_files/dump.lammpstrj"
 
 timestep = 1 #femptosec
 
@@ -346,7 +346,6 @@ function plotG(Gmean)
     a = plot!(xaxis="time (fs)", yaxis="G (Angstrom^-6)")
     display(a)
 end
-
 
 
 ## Method for selecting inta or inter hydrogens exclusively
