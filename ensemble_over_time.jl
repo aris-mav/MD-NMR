@@ -3,7 +3,7 @@
 
 F = calculateF("intra")
 
-tp = 500 # Number of points in the t dimension
+tp = 200 # Number of points in the t dimension
 
 ensemble_τt = ones(size(F, 2) - tp, tp) # Initialise array
 ensemble_ijt = ones(size(F, 1), tp)

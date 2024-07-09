@@ -1,9 +1,12 @@
 # Fmatrix = calc_F(100)
 # G = calc_G(Fmatrix)
 
-#G = mainloop(900, 3, "inter")
+G = mainloop(900, 3, "all")
 
-# Block averaging
+plot(t,real.(first.(G)))
+
+
+## Block averaging
 Gmean = Base.stack(vec(mean(reshape(G, size(G)[1] ÷ nblocks, nblocks), dims=2)))
 # Gmean = Base.stack(vec(mean(reshape(G, size(G)[1]), dims=2)))
 
@@ -28,7 +31,6 @@ display("T1 = $T1 s")
 display("T2 = $T2 s")
 
 
-#sdfgsdfgsfs
 
 ## Replicating mathematica Carles method
 

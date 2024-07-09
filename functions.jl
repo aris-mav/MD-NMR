@@ -19,7 +19,8 @@ const μ₀ = 1.25663706212e-6; #N A^-2
 
 dumpfilepath = "/lustre03/other/9847zg/dump_files/dump.lammpstrj"
 
-timestep = 1 #femptosec
+nblocks = 3
+timestep = 3 #femptosec
 
 # Count lines in dump
 num_lines::Int32 = countlines(dumpfilepath)
@@ -28,7 +29,6 @@ num_lines::Int32 = countlines(dumpfilepath)
 natoms = CSV.File(dumpfilepath, skipto=4, limit=1, header=false).Column1[1]
 nhydrogens::Int32 = 2 * natoms / 3
 
-nblocks = 1
 # How many configurations are in dump (how many time steps)
 # Modify nsteps so that " nsteps%nblocks=0 " (remove the remainder)
 totalsteps = (floor(Int, num_lines / (natoms + 9)) ÷ nblocks) * nblocks
