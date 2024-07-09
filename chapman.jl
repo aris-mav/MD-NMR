@@ -1,6 +1,6 @@
 ## Chapman paper method
 
-
+# Double check prefeactors below, they should be working like this but they're not
 nblocks = 3
 G = mainloop(900, nblocks, "intra")
 Gᵣ =  real.(Base.stack(vec(mean(reshape(G, size(G)[1] ÷ nblocks, nblocks), dims=2)))[1, :])
