@@ -10,32 +10,25 @@ const γ = 267.52218744e6; # (rad s^-1 T^-1)
 const ħ = 1.054571817e-34;  # (J s)
 const μ₀ = 1.25663706212e-6; #N A^-2
 
-# Define the dump file before running script
-# if !@isdefined(dumpfilepath)
+# dumpfilepath = "/lustre03/other/9847zg/dump_files/dump.lammpstrj"
 
-#     display("Please provide a dump file path below:")
-#     global dumpfilepath = readline()
-# end
+# nblocks = 3
+# timestep = 3 #femptosec
 
-dumpfilepath = "/lustre03/other/9847zg/dump_files/dump.lammpstrj"
+# # Count lines in dump
+# num_lines::Int32 = countlines(dumpfilepath)
 
-nblocks = 3
-timestep = 3 #femptosec
+# # Read how many atoms are in the simulation
+# natoms = CSV.File(dumpfilepath, skipto=4, limit=1, header=false).Column1[1]
+# nhydrogens::Int32 = 2 * natoms / 3
 
-# Count lines in dump
-num_lines::Int32 = countlines(dumpfilepath)
-
-# Read how many atoms are in the simulation
-natoms = CSV.File(dumpfilepath, skipto=4, limit=1, header=false).Column1[1]
-nhydrogens::Int32 = 2 * natoms / 3
-
-# How many configurations are in dump (how many time steps)
-# Modify nsteps so that " nsteps%nblocks=0 " (remove the remainder)
-totalsteps = (floor(Int, num_lines / (natoms + 9)) ÷ nblocks) * nblocks
+# # How many configurations are in dump (how many time steps)
+# # Modify nsteps so that " nsteps%nblocks=0 " (remove the remainder)
+# totalsteps = (floor(Int, num_lines / (natoms + 9)) ÷ nblocks) * nblocks
 
 
-# Preallocate  t (time array)
-t = collect(Float32, 0:totalsteps-1) .* (CSV.File(dumpfilepath, skipto=(11 + natoms), limit=1, header=false).Column1 * timestep)
+# # Preallocate  t (time array)
+# t = collect(Float32, 0:totalsteps-1) .* (CSV.File(dumpfilepath, skipto=(11 + natoms), limit=1, header=false).Column1 * timestep)
 
 
 function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<:AbstractVector{<:Real}}, combinations)
@@ -103,7 +96,7 @@ end
 
 
 
-function mainloop(steps, blocks, combinations)
+function mainloop(dumpfilepath, steps, blocks, combinations)
 
     if combinations == "all"
         npairs = floor(Int, nhydrogens * (nhydrogens - 1) / 2)
@@ -179,7 +172,7 @@ function mainloop(steps, blocks, combinations)
 end
 
 
-function calculateF(contributions)
+function calculateF(dumpfilepath,contributions)
 
     if contributions == "all"
         npairs = floor(Int, nhydrogens * (nhydrogens - 1) / 2)
@@ -252,7 +245,7 @@ function calculateF(contributions)
 end
 
 
-function calc_msd(steps)
+function calc_msd(dumpfilepath, steps)
 
     MSD::Vector{Float32} = zeros(steps)
     boxlengths::Vector{Float32} = zeros(3)
