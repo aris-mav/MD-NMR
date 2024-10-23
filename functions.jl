@@ -173,12 +173,12 @@ function mainloop(dumpfilepath, steps, blocks, combinations)
 end
 
 
-function calculateF(dumpfilepath,contributions)
+function calculateF(dumpfilepath,contributions,totalsteps)
 
     if contributions == "all"
         npairs = floor(Int, nhydrogens * (nhydrogens - 1) / 2)
     elseif contributions == "inter"
-        npairs = floor(Int, nhydrogens * (nhydrogens - 1) / 2) - nhydrogens / 2
+        npairs = floor(Int, nhydrogens * (nhydrogens - 1) / 2 - nhydrogens / 2 )
     elseif contributions == "intra"
         npairs = floor(Int, nhydrogens / 2)
     end
@@ -197,7 +197,6 @@ function calculateF(dumpfilepath,contributions)
         for s in 1:totalsteps
 
             # Print progress (optional)
-
             if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
                 progresspercent = round(s * 100 / totalsteps, digits=2)
                 display("Calculation progress: $progresspercent %")
@@ -370,32 +369,6 @@ function ACF(v::AbstractVector)
     a = [v ; zeros(length(v))]
     F = fft(a)
     Cff = F .* vec(F')
-    ACF = abs.(ifft(Cff)[1:length(v)] ./ reverse(collect(1:length(v))))
-
-end
-
-function ACF2(v::AbstractVector)
-
-    a = [v ; zeros(length(v))]
-    F = fft(a)
-    Cff = F .* vec(F')
-    ACF = abs.(ifft(Cff)[1:length(v)])./ length(v) 
-
-end
-
-function ACF3(v::AbstractVector)
-
-    F = fft(v)
-    Cff = F .* vec(F')
-    ACF = abs.(ifft(Cff)[1:length(v)] ./ length(v) )
-
-end
-
-function ACF4(v::AbstractVector)
-
-    #Using Wiener-Khinchin theorem
-    #a = [v ; zeros(length(v))]
-    a = v
-    fft( a .* conj(a) )
+    ACF = real.(ifft(Cff)[1:length(v)] ./ reverse(collect(1:length(v))))
 
 end
