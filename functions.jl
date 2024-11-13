@@ -322,7 +322,7 @@ function calculate_rdf(dumpfilepath)
     
     ri = r # lower shells
     rj = push!(r[2:end], r[end]+dr) # upper shells
-    g = h ./((4π /3) * (6.022/180) .* (rj.^3 .- ri.^3)) 
+    g = h ./(901* 501* (4π /3) * (6.022/180) .* (rj.^3 .- ri.^3)) 
 
     return r, g  
     # Exit the function
