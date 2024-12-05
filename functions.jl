@@ -42,7 +42,7 @@ function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<
             end
         end
 
-        ## Just a demonstration, not actual part of the code
+        ## Just a sanity check of how the loop above works, not actual part of the code
         #for i in 1:10
         #     for j in 1:10
         #        (isodd(i) && j > (i + 1)) || (iseven(i) && j > i) || continue
@@ -109,9 +109,11 @@ function calculateF(dumpfilepath,contributions)
         for s in 1:totalsteps
 
             # Print progress (optional)
-            if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
-                progresspercent = ceil(s * 100 / totalsteps)
-                display("Calculation progress: $progresspercent %")
+            if isinteractive()
+                if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
+                    progresspercent = ceil(s * 100 / totalsteps)
+                    display("Calculation progress: $progresspercent %")
+                end
             end
 
             # Skip headers
@@ -359,7 +361,7 @@ Autocorrelation function
 1.	Pad vector-a by an equal number of zeros. Thus, [ 1 2 3 0 0 0]
 2.	Take the discrete FFT of the new array. Call this F.
 3.	Take the conjugate. Call this F*
-4.	Compose F \times F* (you should do term by term multiplication). Call this Cff.
+4.	Compose F times F* (you should do term by term multiplication). Call this Cff.
 5.	Take the inverse FFT of Cff, and take only the first 3 terms. Call this ACF.
 6.	Now normalize by the vector [3, 2, 1]. That is your answer.
 """
