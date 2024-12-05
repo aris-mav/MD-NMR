@@ -3,13 +3,9 @@ include("./functions.jl")
 ## Inputs
 dumpfilepath = "../dump_files/dump.lammpstrj"
 timestep = 1.5; #femptosec
-totalsteps = 901
-
-# create time array, and convert to seconds from fs
-t = collect(Float32, 0:totalsteps-1) .* (100 * timestep) .* 1e-15;
-
 ω₀ = γ * 1 # (rad s^-1)
 
+t = time_array(dumpfilepath, timestep)
 prefactor = (3 / 16) * (μ₀/(4π))^2 * ħ^2 * γ^4
 
 for contributions in ["intra", "inter"]
@@ -50,6 +46,6 @@ open(dumpfilepath) do io
         # Read box bounds
         for i in 1:3
             boxlengths[i] = sum(abs.(parse.(Float64, split(readline(io), ' '))))
-        println(boxlengths[i])
         end
+        println(boxlengths)
 end

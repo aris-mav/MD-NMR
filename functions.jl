@@ -327,16 +327,42 @@ function calc_msd(dumpfilepath, steps)
 end
 
 
-## Autocorrelation function
-#= FFT based recipe:
+function time_array(dumpfilepath, timestep)
+
+    num_lines::Int32 = countlines(dumpfilepath)
+
+    natoms = open(dumpfilepath) do io
+        for _ in 1:3
+            readline(io)
+        end
+        return parse(Int, readline(io))
+    end
+
+    totalsteps = num_lines ÷ (natoms + 9) 
+
+    dump_every_how_many_steps = open(dumpfilepath) do io
+        readuntil(io, "TIMESTEP")
+        readuntil(io, "TIMESTEP")
+        readline(io)
+        return  parse(Int,readline(io))
+    end
+    
+    t = collect(Float32, 0:totalsteps-1) .* (dump_every_how_many_steps * timestep) .* 1e-15;
+
+    return t
+end
+
+
+"""
+Autocorrelation function
+ FFT based recipe:
 1.	Pad vector-a by an equal number of zeros. Thus, [ 1 2 3 0 0 0]
 2.	Take the discrete FFT of the new array. Call this F.
 3.	Take the conjugate. Call this F*
 4.	Compose F \times F* (you should do term by term multiplication). Call this Cff.
 5.	Take the inverse FFT of Cff, and take only the first 3 terms. Call this ACF.
 6.	Now normalize by the vector [3, 2, 1]. That is your answer.
-=#
-
+"""
 function ACF(v::AbstractVector)
 
     a = [v ; zeros(length(v))]
