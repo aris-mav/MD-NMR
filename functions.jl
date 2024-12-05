@@ -3,7 +3,6 @@ using DelimitedFiles
 using LinearAlgebra
 using FFTW
 using Statistics
-using LsqFit
 using Trapz
 
 # Define physical constants
@@ -11,9 +10,18 @@ const γ = 267.52218744e6; # (rad s^-1 T^-1)
 const ħ = 1.054571817e-34;  # (J s)
 const μ₀ = 1.25663706212e-6; #N A^-2
 
-# fucntion to calculate spectral density
-J(G, t, ω) = 2 * trapz(t, (G .* cos.(ω .* t)))
+"""
+fucntion to calculate spectral density
+"""
+function J(G, t, ω)  
+    return 2 * trapz(t, (G .* cos.(ω .* t)))
+end
 
+"""
+function which takes an array of positions and modifies the Hpairs array to
+store all the combinations of vectors connecting the hydrogens
+(Hpairs is allocated within calculateF function)
+"""
 function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<:AbstractVector{<:Real}}, combinations)
 
     counter::Int32 = 1
@@ -53,6 +61,10 @@ function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<
 
 end
 
+"""
+applies periodic boundary to the coordinates of the atoms
+according to the box size
+"""
 function periodicboundary!(xyz::Vector{<:AbstractVector{<:Real}}, box::Vector{<:Real})
     for i in 1:length(xyz)
         for l in 1:3
@@ -65,6 +77,10 @@ function periodicboundary!(xyz::Vector{<:AbstractVector{<:Real}}, box::Vector{<:
     end
 end
 
+
+"""
+converts [x, y, z] to [r, θ, φ]
+"""
 function cart2sph!(rtp::Vector{<:AbstractVector{<:Real}}, xyz::Vector{<:AbstractVector{<:Real}})
     for i in eachindex(rtp)
         rtp[i][1] = norm(xyz[i])
@@ -73,6 +89,13 @@ function cart2sph!(rtp::Vector{<:AbstractVector{<:Real}}, xyz::Vector{<:Abstract
     end
 end
 
+
+"""
+F in this case is the quantity (3cos(θ)^2 - 1) / r^3
+The output of this function is a matrix which contains this quantity 
+for all pairs of hydrogens (columns)
+and each time step (rows).
+"""
 function calculateF(dumpfilepath,contributions)
 
     num_lines::Int32 = countlines(dumpfilepath)
@@ -159,6 +182,10 @@ function calculateF(dumpfilepath,contributions)
 end
 
 
+"""
+Radial distribution function
+(to see if the model makes sense)
+"""
 function calculate_rdf(dumpfilepath)
 
     n_lines = countlines(dumpfilepath)
@@ -243,92 +270,9 @@ function calculate_rdf(dumpfilepath)
 end
 
 
-function calc_msd(dumpfilepath, steps)
-
-    MSD::Vector{Float32} = zeros(steps)
-    boxlengths::Vector{Float32} = zeros(3)
-    r::Vector{Vector{Float32}} = [zeros(3) for _ in 1:nhydrogens]
-    r0 = deepcopy(r)
-    r_prev = deepcopy(r)
-
-    open(dumpfilepath) do io
-
-        # Loop over time steps
-        for s in 1:steps
-
-            # Print progress (optional)
-            if s in floor.(Int, collect((steps/10):(steps/10):steps))
-                progresspercent = round(s * 100 / steps, digits=2)
-                display("Calculation progress: $progresspercent %")
-            end
-
-            # Skip headers
-            for _ in 1:5
-                readline(io)
-            end
-
-            # Read box bounds
-            for i in 1:3
-                boxlengths[i] = sum(abs.(parse.(Float32, split(readline(io), ' '))))
-            end
-
-            # Skip header
-            readline(io)
-
-            # Read positions
-            for i in 1:2:nhydrogens
-                readline(io) # skip the oxygen
-                r[i] = parse.(Float32, split(readline(io), ' '))[3:5]
-                r[i+1] = parse.(Float32, split(readline(io), ' '))[3:5]
-            end
-
-
-            if s == 1
-                r0 = deepcopy(r)
-                r_prev = deepcopy(r)
-
-            else
-
-                for i in 1:nhydrogens
-                    for j in 1:3
-
-                        if (r[i][j] - r_prev[i][j]) < -boxlengths[j] / 2
-                            r[i][j] += boxlengths[j]
-                        elseif (r[i][j] - r_prev[i][j]) > boxlengths[j] / 2
-                            r[i][j] -= boxlengths[j]
-                        end
-                    end
-
-
-                end
-                MSD[s] = mean((norm.(r - r0)) .^ 2)
-                r_prev = deepcopy(r)
-
-            end
-
-            # Go to next timestep
-        end
-
-        # Close the IO file
-    end
-
-
-    t = collect(range(0, (steps - 1) * 100 * 1, steps))
-
-    eq(x, D) = 6 * D .* x
-    fit = curve_fit(eq, t, MSD, [2e-9])
-
-    p = scatter(t, MSD)
-    plot!(t, eq(t, coef(fit)))
-    display(p)
-
-    D = coef(fit)[1] * 1e-5 #convert to m^2s^-1
-
-    println("The diffusion coefficient is $D m^2s^-1")
-    return D
-end
-
-
+"""
+extract a time array from the dump file
+"""
 function time_array(dumpfilepath, timestep)
 
     num_lines::Int32 = countlines(dumpfilepath)
@@ -358,7 +302,7 @@ end
 """
 Autocorrelation function
  FFT based recipe:
-1.	Pad vector-a by an equal number of zeros. Thus, [ 1 2 3 0 0 0]
+1.	Pad vector-a by an equal number of zeros. Thus, [1 2 3 0 0 0]
 2.	Take the discrete FFT of the new array. Call this F.
 3.	Take the conjugate. Call this F*
 4.	Compose F times F* (you should do term by term multiplication). Call this Cff.
