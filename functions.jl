@@ -1,8 +1,8 @@
 #using Plots
+using DelimitedFiles
 using LinearAlgebra
 using FFTW
 using Statistics
-using CSV
 using LsqFit
 using Trapz
 
@@ -11,22 +11,25 @@ const γ = 267.52218744e6; # (rad s^-1 T^-1)
 const ħ = 1.054571817e-34;  # (J s)
 const μ₀ = 1.25663706212e-6; #N A^-2
 
+# fucntion to calculate spectral density
+J(G, t, ω) = 2 * trapz(t, (G .* cos.(ω .* t)))
 
 function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<:AbstractVector{<:Real}}, combinations)
+
     counter::Int32 = 1
 
     if combinations == "all"
         for k in axes(positions, 1)
             for j in axes(positions, 1)
                 j > k || continue
-                Hpairs[counter] .= @views (positions[k] .- positions[j])
+                Hpairs[counter] .= positions[k] .- positions[j]
                 counter += 1
             end
         end
 
     elseif combinations == "intra"
         for i in 1:2:length(positions)
-            Hpairs[counter] = positions[i] - positions[i+1]
+            Hpairs[counter] .= positions[i] - positions[i+1]
             counter += 1
         end
 
@@ -34,14 +37,21 @@ function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<
         for k in axes(positions, 1)
             for j in axes(positions, 1)
                 (isodd(k) && j > (k + 1)) || (iseven(k) && j > k) || continue
-                Hpairs[counter] = positions[k] - positions[j]
+                Hpairs[counter] .= positions[k] - positions[j]
                 counter += 1
             end
         end
+
+        ## Just a demonstration, not actual part of the code
+        #for i in 1:10
+        #     for j in 1:10
+        #        (isodd(i) && j > (i + 1)) || (iseven(i) && j > i) || continue
+        #        display("$i with $j")
+        #     end
+        #end
     end
 
 end
-
 
 function periodicboundary!(xyz::Vector{<:AbstractVector{<:Real}}, box::Vector{<:Real})
     for i in 1:length(xyz)
@@ -63,23 +73,26 @@ function cart2sph!(rtp::Vector{<:AbstractVector{<:Real}}, xyz::Vector{<:Abstract
     end
 end
 
-function F012!(F::Vector{<:AbstractVector{<:Complex}}, rtp::Vector{<:AbstractVector{<:Real}})
-    for i in 1:length(rtp)
-        F[i][1] = complex((3 * cos(rtp[i][2])^2 - 1) / (rtp[i][1]^3))
-        F[i][2] = (sin(rtp[i][2]) * cos(rtp[i][2]) * exp(-1im * rtp[i][3])) / rtp[i][1]^3
-        F[i][3] = (sin(rtp[i][2])^2 * exp(-2im * rtp[i][3])) / rtp[i][1]^3
+function calculateF(dumpfilepath,contributions)
+
+    num_lines::Int32 = countlines(dumpfilepath)
+
+    natoms = open(dumpfilepath) do io
+        for _ in 1:3
+            readline(io)
+        end
+        return parse(Int, readline(io))
     end
-end
 
-
-function calculateF(dumpfilepath,contributions,totalsteps)
+    nhydrogens = 2 * natoms ÷ 3
+    totalsteps = num_lines ÷ (natoms + 9) 
 
     if contributions == "all"
-        npairs = floor(Int, nhydrogens * (nhydrogens - 1) / 2)
+        npairs = nhydrogens * (nhydrogens - 1) ÷ 2
     elseif contributions == "inter"
-        npairs = floor(Int, nhydrogens * (nhydrogens - 1) / 2 - nhydrogens / 2 )
+        npairs = nhydrogens * (nhydrogens - 1) ÷ 2 - nhydrogens ÷ 2 
     elseif contributions == "intra"
-        npairs = floor(Int, nhydrogens / 2)
+        npairs = nhydrogens ÷ 2
     end
 
     # Initialise arrays
@@ -96,10 +109,10 @@ function calculateF(dumpfilepath,contributions,totalsteps)
         for s in 1:totalsteps
 
             # Print progress (optional)
-            #if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
-            #    progresspercent = round(s * 100 / totalsteps, digits=2)
-            #    display("Calculation progress: $progresspercent %")
-            #end
+            if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
+                progresspercent = ceil(s * 100 / totalsteps)
+                display("Calculation progress: $progresspercent %")
+            end
 
             # Skip headers
             for _ in 1:5
@@ -186,7 +199,7 @@ function calculate_rdf(dumpfilepath)
 
             # Read box bounds
             for i in 1:3
-                boxlengths[i] = sum(abs.(parse.(Float32, split(readline(io), ' '))))
+                boxlengths[i] .= sum(abs.(parse.(Float32, split(readline(io), ' '))))
             end
 
             # Skip header
@@ -313,19 +326,6 @@ function calc_msd(dumpfilepath, steps)
     return D
 end
 
-
-## Method for selecting inta or inter hydrogens exclusively
-## Just a demonstration, not actual part of the code
-#for i in 1:10
-#     for j in 1:10
-#        (isodd(i) && j > (i + 1)) || (iseven(i) && j > i) || continue
-#        display("$i with $j")
-#     end
-#end
-#
-#for i in 1:2:10
-#    display("$i with $(i+1)")
-#end
 
 ## Autocorrelation function
 #= FFT based recipe:
