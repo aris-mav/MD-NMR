@@ -1,4 +1,4 @@
-using Plots
+#using Plots
 using LinearAlgebra
 using FFTW
 using Statistics
@@ -14,6 +14,7 @@ const μ₀ = 1.25663706212e-6; #N A^-2
 
 function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<:AbstractVector{<:Real}}, combinations)
     counter::Int32 = 1
+
     if combinations == "all"
         for k in axes(positions, 1)
             for j in axes(positions, 1)
@@ -33,11 +34,12 @@ function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<
         for k in axes(positions, 1)
             for j in axes(positions, 1)
                 (isodd(k) && j > (k + 1)) || (iseven(k) && j > k) || continue
-                Hpairs[counter] .= @views (positions[k] .- positions[j])
+                Hpairs[counter] = positions[k] - positions[j]
                 counter += 1
             end
         end
     end
+
 end
 
 
@@ -60,7 +62,6 @@ function cart2sph!(rtp::Vector{<:AbstractVector{<:Real}}, xyz::Vector{<:Abstract
         rtp[i][3] = atan(xyz[i][2], xyz[i][1])
     end
 end
-
 
 function F012!(F::Vector{<:AbstractVector{<:Complex}}, rtp::Vector{<:AbstractVector{<:Real}})
     for i in 1:length(rtp)
@@ -95,10 +96,10 @@ function calculateF(dumpfilepath,contributions,totalsteps)
         for s in 1:totalsteps
 
             # Print progress (optional)
-            if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
-                progresspercent = round(s * 100 / totalsteps, digits=2)
-                display("Calculation progress: $progresspercent %")
-            end
+            #if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
+            #    progresspercent = round(s * 100 / totalsteps, digits=2)
+            #    display("Calculation progress: $progresspercent %")
+            #end
 
             # Skip headers
             for _ in 1:5
@@ -124,7 +125,6 @@ function calculateF(dumpfilepath,contributions,totalsteps)
             getpairs!(Hpairs, positions, contributions)
             periodicboundary!(Hpairs, boxlengths)
             cart2sph!(rtp, Hpairs)
-
 
             for (i, j) in enumerate(rtp)
 
