@@ -22,41 +22,43 @@ function which takes an array of positions and modifies the Hpairs array to
 store all the combinations of vectors connecting the hydrogens
 (Hpairs is allocated within calculateF function)
 """
-function getpairs!(Hpairs::Vector{<:AbstractVector{<:Real}}, positions::Vector{<:AbstractVector{<:Real}}, combinations)
+function getpairs!(Hpairs::Vector{<:Vector{<:Real}},
+                   positions::Vector{<:Vector{<:Real}},
+                   combinations::String)
 
-    counter::Int32 = 1
+    counter::Int64 = 1
 
     if combinations == "all"
         for k in axes(positions, 1)
             for j in axes(positions, 1)
                 j > k || continue
-                Hpairs[counter] .= positions[k] .- positions[j]
+                Hpairs[counter] = positions[k] .- positions[j]
                 counter += 1
             end
         end
 
     elseif combinations == "intra"
         for i in 1:2:length(positions)
-            Hpairs[counter] .= positions[i] - positions[i+1]
+            Hpairs[counter] = positions[i] .- positions[i+1]
             counter += 1
         end
 
     elseif combinations == "inter"
-        for k in axes(positions, 1)
+        for i in axes(positions, 1)
             for j in axes(positions, 1)
-                (isodd(k) && j > (k + 1)) || (iseven(k) && j > k) || continue
-                Hpairs[counter] .= positions[k] - positions[j]
+                (isodd(i) && j > (i + 1)) || (iseven(i) && j > i) || continue
+                Hpairs[counter] = positions[i] .- positions[j]
                 counter += 1
             end
         end
 
         ## Just a sanity check of how the loop above works, not actual part of the code
-        #for i in 1:10
-        #     for j in 1:10
-        #        (isodd(i) && j > (i + 1)) || (iseven(i) && j > i) || continue
-        #        display("$i with $j")
-        #     end
-        #end
+        #=for i in 1:10=#
+        #=     for j in 1:10=#
+        #=        (isodd(i) && j > (i + 1)) || (iseven(i) && j > i) || continue=#
+        #=        display("$i with $j")=#
+        #=     end=#
+        #=end=#
     end
 
 end
@@ -98,7 +100,7 @@ and each time step (rows).
 """
 function calculateF(dumpfilepath,contributions)
 
-    num_lines::Int32 = countlines(dumpfilepath)
+    num_lines::Int = countlines(dumpfilepath)
 
     natoms = open(dumpfilepath) do io
         for _ in 1:3
@@ -109,6 +111,8 @@ function calculateF(dumpfilepath,contributions)
 
     nhydrogens = 2 * natoms ÷ 3
     totalsteps = num_lines ÷ (natoms + 9) 
+
+    npairs::Int64 = 1 
 
     if contributions == "all"
         npairs = nhydrogens * (nhydrogens - 1) ÷ 2
@@ -121,9 +125,10 @@ function calculateF(dumpfilepath,contributions)
     # Initialise arrays
     boxlengths::Vector{Float32} = zeros(3)
     positions::Vector{Vector{Float32}} = [zeros(3) for _ in 1:nhydrogens]
-    Hpairs::Vector{Vector{Float32}} = [[1.0, 1.0, 1.0] for _ in 1:npairs]
-    rtp::Vector{Vector{Float32}} = [[1.0, 1.0, 1.0] for _ in 1:npairs]
+    Hpairs::Vector{Vector{Float32}} = [zeros(3) for _ in 1:npairs]
     F::Matrix{Float32} = zeros(npairs, totalsteps)
+    zvec = [0.0, 0.0, 1.0]
+    vecnorm::Float64 = 1.0
 
     # Open the dump file
     open(dumpfilepath) do io
@@ -162,12 +167,10 @@ function calculateF(dumpfilepath,contributions)
             # Do calculations
             getpairs!(Hpairs, positions, contributions)
             periodicboundary!(Hpairs, boxlengths)
-            cart2sph!(rtp, Hpairs)
 
-            for (i, j) in enumerate(rtp)
-
-                F[i, s] = (3 * cos(j[2])^2 - 1) / j[1]^3
-
+            for (i, p) in enumerate(Hpairs)
+                vecnorm = norm(p)
+                F[i, s] = ( 3 * ( dot(zvec, p)/vecnorm)^2 -1 ) / vecnorm ^3
             end
 
             # Go to next timestep
