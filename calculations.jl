@@ -6,11 +6,10 @@ timestep = 1.5; #femptosec
 ω₀ = γ * 1 # (rad s^-1) at 1 tesla
 
 t = time_array(dumpfilepath, timestep)
-prefactor = (3 / 16) * (μ₀/(4π))^2 * ħ^2 * γ^4
 
 for x in ["intra", "inter"]
 
-    F = calculateF(dumpfilepath, x);
+    @time F = calculateF(dumpfilepath, x);
 
     G_ens_av = mean(ACF.(eachrow(F))) # Ensemble average (no prefactors)
 
@@ -18,7 +17,7 @@ for x in ["intra", "inter"]
 
     τ = (1 / G[1]) * trapz(t, G) # Correlation time (s)
 
-    Δω² = 3 * prefactor * mean(mean(F.^2, dims=2)) * 1e60
+    Δω² = delta_omega(F)
     Δω = sqrt(Δω²)/2π /1000 # KHz
     
     T = 1/ (10 / 3 * Δω² * τ )
