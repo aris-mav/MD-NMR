@@ -9,11 +9,9 @@ t = time_array(dumpfilepath, timestep)
 
 for x in ["intra", "inter"]
 
-    @time F = calculateF(dumpfilepath, x);
+    F = calculateF(dumpfilepath, x);
 
-    G_ens_av = mean(ACF.(eachrow(F))) # Ensemble average (no prefactors)
-
-    G = prefactor * G_ens_av * 1e60 
+    G = calculateG(F) # Ensemble average 
 
     τ = (1 / G[1]) * trapz(t, G) # Correlation time (s)
 
