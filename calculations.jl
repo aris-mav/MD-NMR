@@ -9,7 +9,7 @@ t = time_array(dumpfilepath, timestep)
 
 for x in ["intra", "inter"]
 
-    @time F = calculateF(dumpfilepath, x);
+    F = calculateF(dumpfilepath, x);
 
     G_ens_av = mean(ACF.(eachrow(F))) # Ensemble average (no prefactors)
 
