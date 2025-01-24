@@ -20,7 +20,7 @@ for x in ["intra", "inter"]
     
     T = 1/ (10 / 3 * Δω² * τ )
     T1 = 1/ (J(G, t, ω₀) + 4J(G, t, 2ω₀))
-    T2 = 1/ ((3/2)*J(G, t, 0) + (5/2)*J(G, t, ω₀) + J(G, t, 2ω₀))
+    T2 = 1/ ((3/2) * J(G, t, 0) + (5/2) * J(G, t, ω₀) + J(G, t, 2ω₀))
 
     println("")
     println("Results for "*x*"molecular contributions")
@@ -32,6 +32,6 @@ for x in ["intra", "inter"]
     @show T2
     println("")
 
-    writedlm("./"*x*"_correlation_data.txt", [t G_ens_av])
+    writedlm("./"*x*"_correlation_data.txt", [t G])
 end
 

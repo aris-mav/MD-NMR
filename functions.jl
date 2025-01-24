@@ -112,18 +112,24 @@ function calculateF(dumpfilepath, contributions::String)
         return parse(Int, readline(io))
     end
 
-    nhydrogens::Int = 2 * natoms ÷ 3
     totalsteps::Int = num_lines ÷ (natoms + 9) 
 
-    npairs::Int64 = 1 
+    exclude_atoms = natoms ÷ 2
+    natoms -= exclude_atoms
+    nhydrogens::Int = 2 * natoms ÷ 3
+
+    npairs::Int64 = 0 
 
     if contributions == "all"
-        npairs = nhydrogens * (nhydrogens - 1) ÷ 2
+        npairs += nhydrogens * (nhydrogens - 1) ÷ 2
     elseif contributions == "inter"
-        npairs = nhydrogens * (nhydrogens - 1) ÷ 2 - nhydrogens ÷ 2 
+        npairs += nhydrogens * (nhydrogens - 1) ÷ 2 - nhydrogens ÷ 2 
     elseif contributions == "intra"
-        npairs = nhydrogens ÷ 2
+        npairs += nhydrogens ÷ 2
     end
+
+    @show npairs
+    @show nhydrogens
 
     # Initialise arrays
     boxlengths::MVector{3, Float32} = @SVector zeros(Float32, 3)
@@ -143,7 +149,7 @@ function calculateF(dumpfilepath, contributions::String)
             if isinteractive()
                 if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
                     progresspercent = ceil(s * 100 / totalsteps)
-      display("Calculation progress: $progresspercent %")
+                    display("Calculation progress: $progresspercent %")
                 end
             end
 
@@ -167,6 +173,8 @@ function calculateF(dumpfilepath, contributions::String)
                 positions[i+1] = SVector( parse.(Float32, split(readline(io), ' '))[3:5]...)
             end
 
+            readuntil(io,"TIME")
+
             # Do calculations
             getpairs!(Hpairs, positions, contributions)
             periodicboundary!(Hpairs, boxlengths)
@@ -175,6 +183,7 @@ function calculateF(dumpfilepath, contributions::String)
                 vecnorm = norm(p)
                 F[i, s] = ( 3 * ( dot(zvec, p)/vecnorm)^2 -1 ) / vecnorm ^3
             end
+
 
             # Go to next timestep
         end
