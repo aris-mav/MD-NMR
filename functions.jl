@@ -143,7 +143,7 @@ function calculateF(dumpfilepath, contributions::String)
             if isinteractive()
                 if s in floor.(Int, collect((totalsteps/10):(totalsteps/10):totalsteps))
                     progresspercent = ceil(s * 100 / totalsteps)
-                    display("Calculation progress: $progresspercent %")
+      display("Calculation progress: $progresspercent %")
                 end
             end
 
@@ -327,6 +327,11 @@ function ACF(v::AbstractVector)
     Cff = F .* vec(F')
     ACF = real.(ifft(Cff)[1:length(v)] ./ reverse(collect(1:length(v))))
 
+end
+
+function calculateG(F::Matrix)
+    G_ens_av = mean(ACF.(eachrow(F))) # Ensemble average (no prefactors)
+    return prefactor * G_ens_av * 1e60 
 end
 
 function delta_omega(F::Matrix)
